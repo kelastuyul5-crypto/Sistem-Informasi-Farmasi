@@ -40,8 +40,9 @@ export function useAuthGuard() {
     const dokterOnlyPaths = ["/resep/buat", "/resep"];
 
     if (user.role === "dokter") {
-      const blocked = adminOnlyPaths.some((p) => pathname.startsWith(p));
-      if (blocked) router.replace("/dashboard");
+      // Dokter only allowed on /pasien and /resep — redirect everything else to /pasien
+      const allowed = ["/pasien", "/resep"].some((p) => pathname.startsWith(p));
+      if (!allowed) router.replace("/pasien");
     }
 
     if (user.role === "admin") {

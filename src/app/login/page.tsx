@@ -41,7 +41,7 @@ export default function LoginPage() {
       const loggedUser = await login(email, password);
       // Redirect based on role
       if (loggedUser.role === "dokter") {
-        router.push("/resep/buat");
+        router.push("/pasien");
       } else {
         router.push("/dashboard");
       }

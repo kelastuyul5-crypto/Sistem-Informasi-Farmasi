@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pill, ShieldCheck, TrendingDown, Plus, Search, Edit2, X, Loader2 } from "lucide-react";
+import { Pill, ShieldCheck, TrendingDown, Plus, Search, X, Loader2 } from "lucide-react";
 import { getObatWithStok, insertObat, type Obat } from "@/lib/supabase-queries";
 import { cn } from "@/lib/utils";
 
@@ -93,7 +93,7 @@ export default function MasterObatPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700/40 bg-slate-800/50">
-                {["Nama Obat", "Satuan", "Harga Normal", "Stok Min.", "Total Stok", "BPJS", "Aksi"].map((h) => (
+                {["Nama Obat", "Satuan", "Harga Normal", "Stok Min.", "Total Stok", "BPJS"].map((h) => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -102,7 +102,7 @@ export default function MasterObatPage() {
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="border-b border-slate-800">
-                    {[...Array(7)].map((_, j) => (
+                    {[...Array(6)].map((_, j) => (
                       <td key={j} className="px-5 py-3">
                         <div className="h-4 bg-slate-800 rounded animate-pulse w-20" />
                       </td>
@@ -110,9 +110,9 @@ export default function MasterObatPage() {
                   </tr>
                 ))
               ) : error ? (
-                <tr><td colSpan={7} className="px-5 py-6 text-red-400 text-sm">Gagal memuat data: {(error as Error).message}</td></tr>
+                <tr><td colSpan={6} className="px-5 py-6 text-red-400 text-sm">Gagal memuat data: {(error as Error).message}</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">Tidak ada obat ditemukan.</td></tr>
+                <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">Tidak ada obat ditemukan.</td></tr>
               ) : (
                 filtered.map((o) => {
                   const isLow = o.total_stok < o.stok_minimum;
@@ -136,11 +136,6 @@ export default function MasterObatPage() {
                         ) : (
                           <span className="px-2 py-0.5 rounded-full text-xs text-slate-500 border border-slate-700">Umum</span>
                         )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <button className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-teal-600/30 hover:text-teal-400 text-slate-400 transition-all">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
                       </td>
                     </tr>
                   );

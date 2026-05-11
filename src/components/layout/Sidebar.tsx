@@ -16,18 +16,18 @@ import {
   ChevronRight,
   Stethoscope,
   ShieldCheck,
-  RefreshCw,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
 type Role = "dokter" | "admin";
 
 const dokterNav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Data Pasien", href: "/pasien", icon: Users },
+  { label: "Antrean Pasien", href: "/pasien", icon: Users },
   { label: "Buat E-Resep", href: "/resep/buat", icon: FileText },
 ];
+
 
 const adminNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

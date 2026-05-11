@@ -17,6 +17,19 @@ function ExpiryBadge({ daysLeft }: { daysLeft: number }) {
 
 const emptyForm = { id_supplier: "", id_obat: "", nomor_batch: "", jumlah: 1, tgl_terima: "", tgl_kadaluarsa: "" };
 
+/** Generate nomor batch otomatis: BTH-YYYY-NNN */
+function generateBatchNumber(existingBatches: { nomor_batch: string }[]): string {
+  const year = new Date().getFullYear();
+  const prefix = `BTH-${year}-`;
+  const nums = existingBatches
+    .map((b) => b.nomor_batch)
+    .filter((n) => n.startsWith(prefix))
+    .map((n) => parseInt(n.replace(prefix, ""), 10))
+    .filter((n) => !isNaN(n));
+  const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+  return `${prefix}${String(next).padStart(3, "0")}`;
+}
+
 export default function InventoriPage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
@@ -35,6 +48,17 @@ export default function InventoriPage() {
     onError: (e: Error) => setFormError(e.message),
   });
 
+  function handleOpenForm() {
+    const today = new Date().toISOString().split("T")[0];
+    setForm({
+      ...emptyForm,
+      nomor_batch: generateBatchNumber(batches),
+      tgl_terima: today,
+    });
+    setFormError("");
+    setShowForm(true);
+  }
+
   const filtered = batches.filter(b =>
     b.nama_obat.toLowerCase().includes(search.toLowerCase()) ||
     b.nomor_batch.toLowerCase().includes(search.toLowerCase()) ||
@@ -48,7 +72,7 @@ export default function InventoriPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError("");
-    if (!form.id_supplier || !form.id_obat || !form.nomor_batch || !form.tgl_terima || !form.tgl_kadaluarsa) {
+  if (!form.id_supplier || !form.id_obat || !form.nomor_batch || !form.tgl_terima || !form.tgl_kadaluarsa) {
       setFormError("Semua field wajib diisi."); return;
     }
     if (!user?.id) { setFormError("Anda belum login sebagai admin."); return; }
@@ -67,7 +91,7 @@ export default function InventoriPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2"><Package className="w-6 h-6 text-teal-400" /> Inventori Batch Obat</h1>
           <p className="text-slate-400 text-sm mt-1">Manajemen penerimaan obat berbasis batch dengan sistem FEFO.</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold text-sm transition-all shadow-lg shadow-teal-900/40">
+        <button onClick={handleOpenForm} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold text-sm transition-all shadow-lg shadow-teal-900/40">
           <Plus className="w-4 h-4" /> Penerimaan Obat Baru
         </button>
       </div>
