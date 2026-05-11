@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, ChevronRight, ShieldCheck, CheckCircle, XCircle, Clock, User, Loader2 } from "lucide-react";
-import { getResepWithDetail, updateResepStatus, type Resep } from "@/lib/supabase-queries";
+import { getResepWithDetail, updateResepStatus, getObatWithStok, type Resep } from "@/lib/supabase-queries";
 import { cn } from "@/lib/utils";
 
 type Status = "Menunggu" | "Siap" | "Selesai" | "Ditolak";
@@ -21,6 +21,13 @@ export default function ValidasiResepPage() {
   const qc = useQueryClient();
 
   const { data: resepList = [], isLoading } = useQuery({ queryKey: ["resep"], queryFn: getResepWithDetail });
+  const { data: obatList = [] } = useQuery({ queryKey: ["obat"], queryFn: getObatWithStok });
+
+  // Map for fast stock lookup
+  const stokMap = Object.fromEntries(obatList.map(o => [o.id_obat, o.total_stok]));
+
+  // Check if current selected resep has enough stock for all items
+  const isStockInsufficient = selected?.detail.some(d => (stokMap[d.id_obat] ?? 0) < d.jumlah_diminta);
 
   const mutation = useMutation({
     mutationFn: ({ id, status, catatan }: { id: string; status: "Siap" | "Ditolak"; catatan: string }) =>
@@ -104,13 +111,20 @@ export default function ValidasiResepPage() {
                 <h2 className="font-bold text-white text-lg">{selected.nama_pasien}</h2>
                 <p className="text-xs text-slate-500 mt-0.5">{selected.no_rekam_medis} · {selected.nama_dokter}</p>
               </div>
-              <div className="flex items-center gap-2">
-                {selected.status_bpjs && (
-                  <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30">
-                    <ShieldCheck className="w-3.5 h-3.5" /> BPJS Aktif
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  {selected.status_bpjs && (
+                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-500/30">
+                      <ShieldCheck className="w-3.5 h-3.5" /> BPJS Aktif
+                    </span>
+                  )}
+                  <span className={cn("px-2 py-1 rounded-lg text-xs font-semibold border", statusConfig[selected.status as Status].color)}>{statusConfig[selected.status as Status].label}</span>
+                </div>
+                {selected.status === "Menunggu" && isStockInsufficient && (
+                  <span className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold bg-red-500/10 px-2 py-1 rounded border border-red-500/20 animate-pulse">
+                    <XCircle className="w-3 h-3" /> PERINGATAN: STOK TIDAK CUKUP
                   </span>
                 )}
-                <span className={cn("px-2 py-1 rounded-lg text-xs font-semibold border", statusConfig[selected.status as Status].color)}>{statusConfig[selected.status as Status].label}</span>
               </div>
             </div>
 
@@ -122,20 +136,29 @@ export default function ValidasiResepPage() {
                   ))}
                 </tr></thead>
                 <tbody>
-                  {selected.detail.map(d => (
-                    <tr key={d.id_detail_resep} className="border-b border-slate-800 hover:bg-slate-800/30">
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-slate-200">{d.nama_obat}</p>
-                        {d.ditanggung_bpjs && selected.status_bpjs && (
-                          <span className="inline-flex items-center gap-1 text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/20"><ShieldCheck className="w-2.5 h-2.5" /> BPJS Subsidi</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-slate-400 text-xs">{d.aturan_pakai}</td>
-                      <td className="px-5 py-3 text-slate-300">{d.jumlah_diminta}</td>
-                      <td className="px-5 py-3">{d.harga_final === 0 || d.harga_final === null ? <span className="font-semibold text-teal-400">Rp 0</span> : <span className="text-slate-300">{formatRp(d.harga_final)}</span>}</td>
-                      <td className="px-5 py-3">{d.subtotal === 0 || d.subtotal === null ? <span className="font-bold text-teal-400">Rp 0 ✓</span> : <span className="font-semibold text-slate-200">{formatRp(d.subtotal)}</span>}</td>
-                    </tr>
-                  ))}
+                  {selected.detail.map(d => {
+                    const currentStok = stokMap[d.id_obat] ?? 0;
+                    const isShort = currentStok < d.jumlah_diminta;
+                    return (
+                      <tr key={d.id_detail_resep} className="border-b border-slate-800 hover:bg-slate-800/30">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-200">{d.nama_obat}</p>
+                            {isShort && selected.status === "Menunggu" && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-[9px] font-bold border border-red-500/30">Stok Kurang ({currentStok})</span>
+                            )}
+                          </div>
+                          {d.ditanggung_bpjs && selected.status_bpjs && (
+                            <span className="inline-flex items-center gap-1 text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/20"><ShieldCheck className="w-2.5 h-2.5" /> BPJS Subsidi</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-slate-400 text-xs">{d.aturan_pakai}</td>
+                        <td className={cn("px-5 py-3", isShort && selected.status === "Menunggu" ? "text-red-400 font-bold" : "text-slate-300")}>{d.jumlah_diminta}</td>
+                        <td className="px-5 py-3">{d.harga_final === 0 || d.harga_final === null ? <span className="font-semibold text-teal-400">Rp 0</span> : <span className="text-slate-300">{formatRp(d.harga_final)}</span>}</td>
+                        <td className="px-5 py-3">{d.subtotal === 0 || d.subtotal === null ? <span className="font-bold text-teal-400">Rp 0 ✓</span> : <span className="font-semibold text-slate-200">{formatRp(d.subtotal)}</span>}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -152,9 +175,15 @@ export default function ValidasiResepPage() {
                   className="flex-1 py-2.5 rounded-lg border border-red-700/60 text-red-400 hover:bg-red-950/40 font-semibold text-sm flex items-center justify-center gap-2">
                   <XCircle className="w-4 h-4" /> Tolak Resep
                 </button>
-                <button onClick={() => handleAction("Siap")} disabled={mutation.isPending}
-                  className="flex-1 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-900/40">
-                  {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Validasi & Siapkan
+                <button onClick={() => handleAction("Siap")} disabled={mutation.isPending || isStockInsufficient}
+                  className={cn(
+                    "flex-1 py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 shadow-lg transition-all",
+                    isStockInsufficient 
+                      ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700" 
+                      : "bg-teal-600 hover:bg-teal-500 text-white shadow-teal-900/40"
+                  )}>
+                  {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} 
+                  {isStockInsufficient ? "Stok Tidak Mencukupi" : "Validasi & Siapkan"}
                 </button>
               </div>
             )}

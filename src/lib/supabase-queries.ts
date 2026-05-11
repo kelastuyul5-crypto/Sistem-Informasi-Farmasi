@@ -99,10 +99,16 @@ export async function getObatWithStok(): Promise<Obat[]> {
     .order("nama_obat", { ascending: true });
   if (err1) throw new Error(err1.message);
 
-  // Fetch batch sums
+  // Fetch batch sums — only ACTIVE and not near expiry (Rule 12 days)
+  const thresholdDate = new Date();
+  thresholdDate.setDate(thresholdDate.getDate() + 12);
+  const thresholdStr = thresholdDate.toISOString().split("T")[0];
+
   const { data: batchData, error: err2 } = await supabase
     .from("obat_batch")
-    .select("id_obat, sisa_stok");
+    .select("id_obat, sisa_stok")
+    .eq("status_batch", "ACTIVE")
+    .gt("tgl_kadaluarsa", thresholdStr);
   if (err2) throw new Error(err2.message);
 
   // Compute total_stok per obat
