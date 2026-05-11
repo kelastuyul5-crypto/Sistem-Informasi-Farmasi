@@ -1,9 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, PackageX, ClipboardList, TrendingDown, Calendar, Boxes } from "lucide-react";
+import { AlertTriangle, PackageX, ClipboardList, TrendingDown, Calendar, Boxes, PlusCircle, Users } from "lucide-react";
 import { getBatchWithJoins, getObatWithStok, getResepWithDetail } from "@/lib/supabase-queries";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import Link from "next/link";
 
 function daysDiff(d: string) {
   return Math.floor((new Date(d).getTime() - Date.now()) / 86400000);
@@ -27,6 +29,7 @@ function StatCard({ label, value, icon: Icon, color, sub }: { label: string; val
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { data: batches = [] } = useQuery({ queryKey: ["batch"], queryFn: getBatchWithJoins });
   const { data: obatList = [] } = useQuery({ queryKey: ["obat"], queryFn: getObatWithStok });
   const { data: resepList = [] } = useQuery({ queryKey: ["resep"], queryFn: getResepWithDetail });
@@ -36,6 +39,75 @@ export default function DashboardPage() {
   const alertBatches = [...expiredBatches, ...soonBatches].sort((a, b) => daysDiff(a.tgl_kadaluarsa) - daysDiff(b.tgl_kadaluarsa));
   const lowStock = obatList.filter(o => o.total_stok < o.stok_minimum);
   const pending = resepList.filter(r => r.status === "Menunggu");
+
+  const isDokter = user?.role === "dokter";
+
+  if (isDokter) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Dashboard Dokter</h1>
+          <p className="text-slate-400 text-sm mt-1">Selamat datang kembali, dr. {user?.name}. Kelola resep dan pasien Anda.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link href="/resep/buat" className="group p-6 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/10 border border-teal-500/30 hover:border-teal-400 transition-all">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-teal-500 flex items-center justify-center text-white shadow-lg shadow-teal-900/40 group-hover:scale-110 transition-transform">
+                <PlusCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-lg">Buat E-Resep</h3>
+                <p className="text-slate-400 text-sm">Input resep baru untuk pasien</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/pasien" className="group p-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 hover:border-blue-400 transition-all">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-900/40 group-hover:scale-110 transition-transform">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-lg">Data Pasien</h3>
+                <p className="text-slate-400 text-sm">Lihat rekam medis dan riwayat alergi</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Recent Prescriptions for Doctor */}
+        <div className="rounded-xl bg-slate-900 border border-slate-700/60 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/60">
+            <ClipboardList className="w-5 h-5 text-teal-400" />
+            <h2 className="font-semibold text-white">Riwayat Resep Terakhir</h2>
+          </div>
+          {resepList.length === 0 ? (
+            <p className="text-center text-slate-500 text-sm py-8">Belum ada resep yang dibuat. ✓</p>
+          ) : (
+            <div className="divide-y divide-slate-800">
+              {resepList.slice(0, 10).map(r => (
+                <div key={r.id_resep} className="flex items-center justify-between px-5 py-4 hover:bg-slate-800/40 transition-colors">
+                  <div>
+                    <p className="font-medium text-slate-200">{r.nama_pasien}</p>
+                    <p className="text-xs text-slate-500">{r.no_rekam_medis} · Status: <span className={cn(
+                      "font-medium",
+                      r.status === "Menunggu" ? "text-amber-400" : 
+                      r.status === "Siap" ? "text-teal-400" : 
+                      r.status === "Selesai" ? "text-blue-400" : "text-red-400"
+                    )}>{r.status}</span></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">{new Date(r.created_at).toLocaleDateString("id-ID")} {new Date(r.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

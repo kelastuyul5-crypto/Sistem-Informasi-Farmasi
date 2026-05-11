@@ -72,20 +72,24 @@ export function TopHeader() {
       {/* Right Actions */}
       <div className="flex items-center gap-3">
         {/* Alert Bell */}
-        <Link
-          href="/dashboard"
-          className="relative w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-teal-400 hover:border-teal-500/50 transition-all group"
-        >
-          <Bell className="w-4 h-4 group-hover:animate-bounce" />
-          {totalAlerts > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-900/50 animate-pulse">
-              {totalAlerts}
-            </span>
-          )}
-        </Link>
+        {user?.role !== "dokter" && (
+          <>
+            <Link
+              href="/dashboard"
+              className="relative w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-teal-400 hover:border-teal-500/50 transition-all group"
+            >
+              <Bell className="w-4 h-4 group-hover:animate-bounce" />
+              {totalAlerts > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-900/50 animate-pulse">
+                  {totalAlerts}
+                </span>
+              )}
+            </Link>
 
-        {/* Divider */}
-        <div className="w-px h-6 bg-slate-700" />
+            {/* Divider */}
+            <div className="w-px h-6 bg-slate-700" />
+          </>
+        )}
 
         {/* User Profile + Logout Dropdown */}
         <div className="group relative">

@@ -25,6 +25,8 @@ export type Obat = {
   total_stok: number; // computed from SUM(obat_batch.sisa_stok)
 };
 
+export type StatusBatch = 'ACTIVE' | 'ARCHIVED' | 'DISPOSED';
+
 export type ObatBatch = {
   id_batch: string;
   id_obat: string;
@@ -32,6 +34,7 @@ export type ObatBatch = {
   nomor_batch: string;
   tgl_kadaluarsa: string;
   sisa_stok: number;
+  status_batch: StatusBatch;
   // JOINed fields
   nama_obat: string;
   satuan: string;
@@ -142,11 +145,17 @@ export async function getBatchWithJoins(): Promise<ObatBatch[]> {
     nomor_batch: b.nomor_batch,
     tgl_kadaluarsa: b.tgl_kadaluarsa,
     sisa_stok: b.sisa_stok,
+    status_batch: (b.status_batch ?? 'ACTIVE') as StatusBatch,
     nama_obat: b.obat?.nama_obat ?? "—",
     satuan: b.obat?.satuan ?? "—",
     nama_supplier: b.penerimaan_obat?.supplier?.nama_supplier ?? null,
     tgl_terima: b.penerimaan_obat?.tgl_terima ?? null,
   }));
+}
+
+export async function archiveBatch(id_batch: string): Promise<void> {
+  const { error } = await supabase.rpc("archive_batch", { p_id_batch: id_batch });
+  if (error) throw new Error(error.message);
 }
 
 export async function getSupplier(): Promise<Supplier[]> {

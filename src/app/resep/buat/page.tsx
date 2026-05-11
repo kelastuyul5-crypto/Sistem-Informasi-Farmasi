@@ -20,6 +20,7 @@ export default function BuatResepPage() {
   const [pasienSearch, setPasienSearch] = useState("");
   const [showPasienDropdown, setShowPasienDropdown] = useState(false);
   const [obatSearch, setObatSearch] = useState("");
+  const [showObatDropdown, setShowObatDropdown] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [allergyWarnings, setAllergyWarnings] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState("");
@@ -39,15 +40,29 @@ export default function BuatResepPage() {
     onError: (e: Error) => setSubmitError(e.message),
   });
 
-  const filteredPasien = pasienList.filter(p =>
-    p.nama_pasien.toLowerCase().includes(pasienSearch.toLowerCase()) ||
-    p.no_rekam_medis.toLowerCase().includes(pasienSearch.toLowerCase())
-  );
-  const filteredObat = obatList.filter(o => o.nama_obat.toLowerCase().includes(obatSearch.toLowerCase()));
+  // Pasien: show all sorted A-Z, filter by search input in real-time
+  const filteredPasien = pasienList
+    .filter(p =>
+      !pasienSearch ||
+      p.nama_pasien.toLowerCase().includes(pasienSearch.toLowerCase()) ||
+      p.no_rekam_medis.toLowerCase().includes(pasienSearch.toLowerCase())
+    )
+    .sort((a, b) => a.nama_pasien.localeCompare(b.nama_pasien, "id"));
+
+  // Obat: show all sorted A-Z, filter by search input in real-time
+  const filteredObat = obatList
+    .filter(o =>
+      !obatSearch ||
+      o.nama_obat.toLowerCase().includes(obatSearch.toLowerCase())
+    )
+    .sort((a, b) => a.nama_obat.localeCompare(b.nama_obat, "id"));
 
   function handleSelectPasien(p: Pasien) {
-    setSelectedPasien(p); setPasienSearch(p.nama_pasien);
-    setShowPasienDropdown(false); setCart([]); setAllergyWarnings([]);
+    setSelectedPasien(p);
+    setPasienSearch(p.nama_pasien);
+    setShowPasienDropdown(false);
+    setCart([]);
+    setAllergyWarnings([]);
   }
 
   function handleAddObat(o: Obat) {
@@ -60,6 +75,7 @@ export default function BuatResepPage() {
     }
     setCart(prev => [...prev, { id_obat: o.id_obat, nama_obat: o.nama_obat, satuan: o.satuan, jumlah: 10, aturan_pakai: "3x1 setelah makan", harga_jual_normal: o.harga_jual_normal, ditanggung_bpjs: o.ditanggung_bpjs }]);
     setObatSearch("");
+    setShowObatDropdown(false);
   }
 
   function removeFromCart(id: string) {
@@ -113,19 +129,32 @@ export default function BuatResepPage() {
             <h2 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><UserCheck className="w-4 h-4 text-teal-400" /> Pilih Pasien</h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input type="text" placeholder="Cari nama pasien atau No. RM..." value={pasienSearch}
+              <input
+                type="text"
+                placeholder="Cari nama pasien atau No. RM..."
+                value={pasienSearch}
                 onChange={e => { setPasienSearch(e.target.value); setShowPasienDropdown(true); }}
                 onFocus={() => setShowPasienDropdown(true)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500" />
-              {showPasienDropdown && pasienSearch && (
-                <div className="absolute top-full mt-1 left-0 right-0 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 max-h-52 overflow-y-auto">
-                  {filteredPasien.map(p => (
-                    <button key={p.id_pasien} onClick={() => handleSelectPasien(p)} className="w-full text-left px-4 py-2.5 hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-0">
-                      <p className="text-sm font-medium text-slate-200">{p.nama_pasien}</p>
-                      <p className="text-xs text-slate-500">{p.no_rekam_medis} {p.status_bpjs && <span className="ml-2 text-teal-400">· BPJS Aktif</span>}</p>
-                    </button>
-                  ))}
-                  {filteredPasien.length === 0 && <p className="px-4 py-3 text-sm text-slate-500">Pasien tidak ditemukan.</p>}
+                onBlur={() => setTimeout(() => setShowPasienDropdown(false), 150)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
+              />
+              {showPasienDropdown && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 max-h-60 overflow-y-auto">
+                  {filteredPasien.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-slate-500">Pasien tidak ditemukan.</p>
+                  ) : (
+                    filteredPasien.map(p => (
+                      <button
+                        key={p.id_pasien}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => handleSelectPasien(p)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-0"
+                      >
+                        <p className="text-sm font-medium text-slate-200">{p.nama_pasien}</p>
+                        <p className="text-xs text-slate-500">{p.no_rekam_medis}{p.status_bpjs && <span className="ml-2 text-teal-400">· BPJS Aktif</span>}</p>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -160,26 +189,51 @@ export default function BuatResepPage() {
           {/* Medicine Search */}
           <div className="rounded-xl bg-slate-900 border border-slate-700/60 p-5">
             <h2 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><Search className="w-4 h-4 text-teal-400" /> Tambah Obat ke Resep</h2>
-            <input type="text" placeholder={selectedPasien ? "Cari nama obat..." : "Pilih pasien terlebih dahulu"} value={obatSearch}
-              disabled={!selectedPasien} onChange={e => setObatSearch(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 disabled:opacity-40" />
-            {obatSearch && (
-              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {filteredObat.map(o => (
-                  <button key={o.id_obat} onClick={() => handleAddObat(o)}
-                    className="flex items-center justify-between p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-teal-500/50 rounded-lg transition-all text-left group">
-                    <div>
-                      <p className="text-sm font-medium text-slate-200 group-hover:text-teal-300">{o.nama_obat}</p>
-                      <p className="text-xs text-slate-500">{o.satuan} · Stok: {o.total_stok}</p>
-                    </div>
-                    <div className="text-right">
-                      {o.ditanggung_bpjs && <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 block mb-1">BPJS</span>}
-                      <PlusCircle className="w-4 h-4 text-teal-500 ml-auto" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder={selectedPasien ? "Klik atau ketik nama obat..." : "Pilih pasien terlebih dahulu"}
+                value={obatSearch}
+                disabled={!selectedPasien}
+                onChange={e => { setObatSearch(e.target.value); setShowObatDropdown(true); }}
+                onFocus={() => { if (selectedPasien) setShowObatDropdown(true); }}
+                onBlur={() => setTimeout(() => setShowObatDropdown(false), 150)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors disabled:opacity-40"
+              />
+              {showObatDropdown && selectedPasien && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-20 max-h-72 overflow-y-auto">
+                  {filteredObat.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-slate-500">Obat tidak ditemukan.</p>
+                  ) : (
+                    filteredObat.map(o => {
+                      const alreadyInCart = cart.some(c => c.id_obat === o.id_obat);
+                      return (
+                        <button
+                          key={o.id_obat}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => handleAddObat(o)}
+                          disabled={alreadyInCart}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-700 transition-colors border-b border-slate-700/40 last:border-0 text-left disabled:opacity-50 disabled:cursor-not-allowed group"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-slate-200 group-hover:text-teal-300">{o.nama_obat}</p>
+                            <p className="text-xs text-slate-500">{o.satuan} · Stok: {o.total_stok}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 ml-3">
+                            {o.ditanggung_bpjs && <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300">BPJS</span>}
+                            {alreadyInCart
+                              ? <span className="text-[10px] text-slate-500">Ditambahkan</span>
+                              : <PlusCircle className="w-4 h-4 text-teal-500" />
+                            }
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
