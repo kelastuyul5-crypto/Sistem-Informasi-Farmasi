@@ -34,9 +34,19 @@ export default function DashboardPage() {
   const { data: obatList = [] } = useQuery({ queryKey: ["obat"], queryFn: getObatWithStok });
   const { data: resepList = [] } = useQuery({ queryKey: ["resep"], queryFn: getResepWithDetail });
 
-  const expiredBatches = batches.filter(b => daysDiff(b.tgl_kadaluarsa) < 0);
-  const soonBatches = batches.filter(b => { const d = daysDiff(b.tgl_kadaluarsa); return d >= 0 && d <= 90; });
-  const alertBatches = [...expiredBatches, ...soonBatches].sort((a, b) => daysDiff(a.tgl_kadaluarsa) - daysDiff(b.tgl_kadaluarsa));
+  const activeBatches = batches.filter(b => b.status_batch === "ACTIVE");
+  
+  const expiredBatches = activeBatches.filter(b => daysDiff(b.tgl_kadaluarsa) < 0);
+  const soonBatches = activeBatches.filter(b => { 
+    const d = daysDiff(b.tgl_kadaluarsa); 
+    return d >= 0 && d <= 90; 
+  });
+  
+  // Combine for the alert table
+  const alertBatches = [...expiredBatches, ...soonBatches].sort((a, b) => 
+    daysDiff(a.tgl_kadaluarsa) - daysDiff(b.tgl_kadaluarsa)
+  );
+
   const lowStock = obatList.filter(o => o.total_stok < o.stok_minimum);
   const pending = resepList.filter(r => r.status === "Menunggu");
 

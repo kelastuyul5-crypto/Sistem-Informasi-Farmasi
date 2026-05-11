@@ -54,12 +54,12 @@ export default function LoginPage() {
 
   const fillDemo = (type: "dokter" | "admin") => {
     if (type === "dokter") {
-      setEmail("dokter@pharmacare.id");
-      setPassword("dokter123");
+      setEmail("dr.@pharmacare.id");
     } else {
-      setEmail("admin@pharmacare.id");
-      setPassword("admin123");
+      setEmail("admin.@pharmacare.id");
     }
+    // Remove automatic password filling as requested
+    setPassword("");
     setError("");
   };
 
@@ -114,8 +114,8 @@ export default function LoginPage() {
               </span>
             </h1>
             <p className="text-slate-400 text-base leading-relaxed max-w-sm">
-              Platform terintegrasi untuk manajemen resep elektronik,
-              inventori batch, dan layanan farmasi rawat inap secara{" "}
+              Platform terintegrasi untuk manajemen resep elektronik dan
+              inventori batch{" "}
               <span className="text-teal-400 font-medium">closed-loop</span>.
             </p>
           </div>

@@ -56,27 +56,28 @@ function generateBatchNumber(existingBatches: { nomor_batch: string }[]): string
 }
 
 // ── Tab definition ─────────────────────────────────────────────────────────────
-type TabKey = "aktif" | "hampir" | "kadaluarsa" | "semua";
+type TabKey = "aktif" | "hampir" | "kadaluarsa" | "riwayat";
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode; description: string }[] = [
   { key: "aktif",     label: "Stok Aktif",            icon: <CheckCircle2 className="w-4 h-4" />, description: "Sisa stok > 0 & exp > 30 hari" },
-  { key: "hampir",    label: "Mendekati Kadaluarsa",  icon: <Clock className="w-4 h-4" />,        description: "Exp dalam 0–30 hari" },
-  { key: "kadaluarsa",label: "Kadaluarsa / Habis",    icon: <AlertTriangle className="w-4 h-4" />,description: "Sudah exp atau stok = 0" },
-  { key: "semua",     label: "Semua Batch",           icon: <Layers className="w-4 h-4" />,       description: "Termasuk arsip" },
+  { key: "hampir",    label: "Mendekati Kadaluarsa",  icon: <Clock className="w-4 h-4" />,        description: "Exp dalam 0–90 hari (Aktif)" },
+  { key: "kadaluarsa",label: "Kadaluarsa / Habis",    icon: <AlertTriangle className="w-4 h-4" />,description: "Perlu penanganan (Aktif)" },
+  { key: "riwayat",   label: "Riwayat & Pemusnahan",  icon: <Archive className="w-4 h-4" />,      description: "Batch yang sudah diarsipkan atau dimusnahkan" },
 ];
 
 function filterBatches(batches: ObatBatch[], tab: TabKey): ObatBatch[] {
   switch (tab) {
     case "aktif":
-      return batches.filter(b => b.sisa_stok > 0 && daysDiff(b.tgl_kadaluarsa) > 30 && b.status_batch === "ACTIVE");
+      return batches.filter(b => b.sisa_stok > 0 && daysDiff(b.tgl_kadaluarsa) > 90 && b.status_batch === "ACTIVE");
     case "hampir":
       return batches.filter(b => {
         const d = daysDiff(b.tgl_kadaluarsa);
-        return d >= 0 && d <= 30;
+        return d >= 0 && d <= 90 && b.status_batch === "ACTIVE";
       });
     case "kadaluarsa":
-      return batches.filter(b => daysDiff(b.tgl_kadaluarsa) < 0 || b.sisa_stok === 0);
-    case "semua":
+      return batches.filter(b => (daysDiff(b.tgl_kadaluarsa) < 0 || b.sisa_stok === 0) && b.status_batch === "ACTIVE");
+    case "riwayat":
+      return batches.filter(b => b.status_batch !== "ACTIVE");
     default:
       return batches;
   }
@@ -85,10 +86,10 @@ function filterBatches(batches: ObatBatch[], tab: TabKey): ObatBatch[] {
 // ── Tab count badges ───────────────────────────────────────────────────────────
 function getTabCounts(batches: ObatBatch[]) {
   return {
-    aktif:      batches.filter(b => b.sisa_stok > 0 && daysDiff(b.tgl_kadaluarsa) > 30 && b.status_batch === "ACTIVE").length,
-    hampir:     batches.filter(b => { const d = daysDiff(b.tgl_kadaluarsa); return d >= 0 && d <= 30; }).length,
-    kadaluarsa: batches.filter(b => daysDiff(b.tgl_kadaluarsa) < 0 || b.sisa_stok === 0).length,
-    semua:      batches.length,
+    aktif:      batches.filter(b => b.sisa_stok > 0 && daysDiff(b.tgl_kadaluarsa) > 90 && b.status_batch === "ACTIVE").length,
+    hampir:     batches.filter(b => { const d = daysDiff(b.tgl_kadaluarsa); return d >= 0 && d <= 90 && b.status_batch === "ACTIVE"; }).length,
+    kadaluarsa: batches.filter(b => (daysDiff(b.tgl_kadaluarsa) < 0 || b.sisa_stok === 0) && b.status_batch === "ACTIVE").length,
+    riwayat:    batches.filter(b => b.status_batch !== "ACTIVE").length,
   };
 }
 
@@ -191,7 +192,7 @@ export default function InventoriPage() {
           { label: "Batch Aktif",           value: counts.aktif,      color: "text-teal-400",   bg: "from-teal-500/10"   },
           { label: "Mendekati Kadaluarsa",  value: counts.hampir,     color: "text-orange-400", bg: "from-orange-500/10" },
           { label: "Kadaluarsa / Habis",    value: counts.kadaluarsa, color: "text-red-400",    bg: "from-red-500/10"    },
-          { label: "Total Semua Batch",     value: counts.semua,      color: "text-slate-300",  bg: "from-slate-500/10"  },
+          { label: "Total Riwayat & Arsip", value: counts.riwayat,    color: "text-slate-300",  bg: "from-slate-500/10"  },
         ].map(s => (
           <div key={s.label} className={cn("rounded-xl bg-gradient-to-br", s.bg, "to-transparent border border-slate-700/60 p-4 text-center")}>
             <p className={cn("text-3xl font-bold", s.color)}>{s.value}</p>
@@ -258,7 +259,7 @@ export default function InventoriPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700/40">
-                {["Nama Obat", "No. Batch", "Supplier", "Tgl Terima", "Tgl Kadaluarsa", "Sisa Stok", "Status", "Aksi"].map(h => (
+                {["Nama Obat", "No. Batch", "Supplier", "Tgl Terima", "Tgl Kadaluarsa", "Sisa Stok", "Status", ...(activeTab !== "riwayat" ? ["Aksi"] : [])].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -323,49 +324,53 @@ export default function InventoriPage() {
                           <ExpiryBadge daysLeft={dl} />
                         )}
                       </td>
-                      <td className="px-5 py-3">
-                        {canArchive ? (
-                          dl <= 12 ? (
-                            <button
-                              onClick={() => handleDispose(b)}
-                              disabled={archivingId === b.id_batch}
-                              title="Jadikan kadaluarsa / buang"
-                              className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                                "bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                              )}
-                            >
-                              {archivingId === b.id_batch ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-3 h-3" />
-                              )}
-                              Buang (Unfit)
-                            </button>
+                      {activeTab !== "riwayat" && (
+                        <td className="px-5 py-3">
+                          {canArchive ? (
+                            <div className="flex items-center gap-2">
+                              {/* Action: DISPOSE (Clinical Safety) */}
+                              <button
+                                onClick={() => handleDispose(b)}
+                                disabled={archivingId === b.id_batch}
+                                title="MUSNAHKAN: Paksa stok menjadi 0 dan tandai sebagai barang tidak layak pakai (Expired/Rusak)."
+                                className={cn(
+                                  "flex items-center justify-center w-8 h-8 rounded-lg transition-all border",
+                                  dl <= 12 
+                                    ? "bg-red-500 text-white border-red-400 shadow-lg shadow-red-900/40 animate-pulse" 
+                                    : "bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500 hover:text-white"
+                                )}
+                              >
+                                {archivingId === b.id_batch ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+
+                              {/* Action: ARCHIVE (Housekeeping) */}
+                              <button
+                                onClick={() => handleArchive(b)}
+                                disabled={archivingId === b.id_batch}
+                                title="ARSIPKAN: Pindahkan ke riwayat tanpa mengubah jumlah stok. Digunakan untuk merapikan daftar (misal: stok sudah 0)."
+                                className={cn(
+                                  "flex items-center justify-center w-8 h-8 rounded-lg transition-all border",
+                                  isZeroStock
+                                    ? "bg-slate-700 text-white border-slate-600 shadow-md"
+                                    : "bg-slate-800/40 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white"
+                                )}
+                              >
+                                {archivingId === b.id_batch ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Archive className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
                           ) : (
-                            <button
-                              onClick={() => handleArchive(b)}
-                              disabled={archivingId === b.id_batch}
-                              title="Arsipkan batch ini"
-                              className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                                "bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                              )}
-                            >
-                              {archivingId === b.id_batch ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Archive className="w-3 h-3" />
-                              )}
-                              Arsipkan
-                            </button>
-                          )
-                        ) : (
-                          <span className="text-xs text-slate-600 italic">—</span>
-                        )}
-                      </td>
+                            <span className="text-xs text-slate-600 italic px-2">— Non Aktif —</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })
