@@ -8,7 +8,7 @@ const supabase = createClient();
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type NotifType = "EXPIRED" | "EXPIRING_SOON" | "LOW_STOCK";
+export type NotifType = "EXPIRED" | "UNFIT" | "EXPIRING_SOON" | "LOW_STOCK";
 
 export interface AppNotification {
   /** Unique key: "batch::{id_batch}" | "low::{id_obat}" */
@@ -50,6 +50,15 @@ async function fetchAlerts(): Promise<AppNotification[]> {
       notifications.push({
         key: `batch::${b.id_batch}`,
         type: "EXPIRED",
+        namaObat,
+        nomorBatch: b.nomor_batch,
+        daysLeft: dl,
+        tglKadaluarsa: b.tgl_kadaluarsa,
+      });
+    } else if (dl <= 12) {
+      notifications.push({
+        key: `batch::${b.id_batch}`,
+        type: "UNFIT",
         namaObat,
         nomorBatch: b.nomor_batch,
         daysLeft: dl,

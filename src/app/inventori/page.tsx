@@ -5,11 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Package, Plus, Search, CalendarDays, ChevronDown,
   Boxes, FileSpreadsheet, X, Loader2, Archive, AlertTriangle,
-  CheckCircle2, Clock, Layers,
+  CheckCircle2, Clock, Layers, Trash2,
 } from "lucide-react";
 import {
   getBatchWithJoins, getSupplier, getObatList,
-  insertPenerimaanBatch, archiveBatch,
+  insertPenerimaanBatch, archiveBatch, disposeBatch,
   type ObatBatch,
 } from "@/lib/supabase-queries";
 import { useAuth } from "@/lib/auth-context";
@@ -23,8 +23,8 @@ function daysDiff(d: string) {
 function ExpiryBadge({ daysLeft }: { daysLeft: number }) {
   if (daysLeft < 0)
     return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30">Kadaluarsa</span>;
-  if (daysLeft <= 7)
-    return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30">{daysLeft}h lagi</span>;
+  if (daysLeft <= 12)
+    return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-600/30 text-red-400 border border-red-500/40 animate-pulse">Tidak Layak (Critical)</span>;
   if (daysLeft <= 30)
     return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/30">{daysLeft}h lagi</span>;
   if (daysLeft <= 90)
@@ -119,6 +119,12 @@ export default function InventoriPage() {
     onError: (e: Error) => { alert(`Gagal mengarsipkan batch: ${e.message}`); setArchivingId(null); },
   });
 
+  const disposeMutation = useMutation({
+    mutationFn: (id_batch: string) => disposeBatch(id_batch),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["batch"] }); setArchivingId(null); },
+    onError: (e: Error) => { alert(`Gagal membuang batch: ${e.message}`); setArchivingId(null); },
+  });
+
   function handleOpenForm() {
     const today = new Date().toISOString().split("T")[0];
     setForm({ ...emptyForm, nomor_batch: generateBatchNumber(batches), tgl_terima: today });
@@ -145,6 +151,12 @@ export default function InventoriPage() {
     if (!confirm(`Arsipkan batch "${b.nomor_batch}" (${b.nama_obat})?\n\nBatch tidak akan muncul di stok aktif setelah diarsipkan.`)) return;
     setArchivingId(b.id_batch);
     archiveMutation.mutate(b.id_batch);
+  }
+
+  function handleDispose(b: ObatBatch) {
+    if (!confirm(`BUANG / JADIKAN KADALUARSA batch "${b.nomor_batch}" (${b.nama_obat})?\n\nTindakan ini akan menolkan stok dan menandai obat sebagai tidak layak pakai.`)) return;
+    setArchivingId(b.id_batch);
+    disposeMutation.mutate(b.id_batch);
   }
 
   const counts  = getTabCounts(batches);
@@ -313,23 +325,43 @@ export default function InventoriPage() {
                       </td>
                       <td className="px-5 py-3">
                         {canArchive ? (
-                          <button
-                            onClick={() => handleArchive(b)}
-                            disabled={archivingId === b.id_batch}
-                            title="Arsipkan batch ini"
-                            className={cn(
-                              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                              "bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600",
-                              "disabled:opacity-50 disabled:cursor-not-allowed"
-                            )}
-                          >
-                            {archivingId === b.id_batch ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Archive className="w-3 h-3" />
-                            )}
-                            Arsipkan
-                          </button>
+                          dl <= 12 ? (
+                            <button
+                              onClick={() => handleDispose(b)}
+                              disabled={archivingId === b.id_batch}
+                              title="Jadikan kadaluarsa / buang"
+                              className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                "bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                              )}
+                            >
+                              {archivingId === b.id_batch ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                              Buang (Unfit)
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleArchive(b)}
+                              disabled={archivingId === b.id_batch}
+                              title="Arsipkan batch ini"
+                              className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                "bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                              )}
+                            >
+                              {archivingId === b.id_batch ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Archive className="w-3 h-3" />
+                              )}
+                              Arsipkan
+                            </button>
+                          )
                         ) : (
                           <span className="text-xs text-slate-600 italic">—</span>
                         )}

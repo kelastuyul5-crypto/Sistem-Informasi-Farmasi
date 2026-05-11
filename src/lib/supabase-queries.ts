@@ -158,6 +158,11 @@ export async function archiveBatch(id_batch: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function disposeBatch(id_batch: string): Promise<void> {
+  const { error } = await supabase.rpc("dispose_batch", { p_id_batch: id_batch });
+  if (error) throw new Error(error.message);
+}
+
 export async function getSupplier(): Promise<Supplier[]> {
   const { data, error } = await supabase
     .from("supplier")

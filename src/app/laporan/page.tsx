@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, FileDown, Calendar, Loader2 } from "lucide-react";
+import { BarChart3, TrendingUp, Calendar, Loader2 } from "lucide-react";
 import { getResepWithDetail } from "@/lib/supabase-queries";
 import { cn } from "@/lib/utils";
 
@@ -32,11 +32,7 @@ export default function LaporanPage() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Ringkasan transaksi, pendapatan kasir, dan penggunaan BPJS.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-teal-500/50 text-slate-300 text-sm transition-all">
-            <FileDown className="w-4 h-4" /> Export PDF
-          </button>
-        </div>
+
       </div>
 
       {/* KPI Cards */}

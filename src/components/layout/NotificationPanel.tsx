@@ -18,9 +18,9 @@ import { useNotifications, type AppNotification } from "@/hooks/useNotifications
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function NotifIcon({ type }: { type: AppNotification["type"] }) {
-  if (type === "EXPIRED")
+  if (type === "EXPIRED" || type === "UNFIT")
     return (
-      <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0 animate-pulse">
         <PackageX className="w-4 h-4 text-red-400" />
       </div>
     );
@@ -39,6 +39,7 @@ function NotifIcon({ type }: { type: AppNotification["type"] }) {
 
 function notifTitle(n: AppNotification): string {
   if (n.type === "EXPIRED") return "Batch Kadaluarsa";
+  if (n.type === "UNFIT") return "TIDAK LAYAK (Kritis)";
   if (n.type === "EXPIRING_SOON") return "Hampir Kadaluarsa";
   return "Stok Kritis";
 }
@@ -48,6 +49,9 @@ function notifBody(n: AppNotification): string {
     const days = Math.abs(n.daysLeft!);
     return `${n.namaObat} (${n.nomorBatch}) sudah kadaluarsa ${days} hari lalu`;
   }
+  if (n.type === "UNFIT") {
+    return `${n.namaObat} (${n.nomorBatch}) sisa ${n.daysLeft} hari. BLOKIR OTOMATIS.`;
+  }
   if (n.type === "EXPIRING_SOON") {
     return `${n.namaObat} (${n.nomorBatch}) kadaluarsa dalam ${n.daysLeft} hari`;
   }
@@ -55,7 +59,7 @@ function notifBody(n: AppNotification): string {
 }
 
 function notifColor(type: AppNotification["type"]) {
-  if (type === "EXPIRED") return "border-l-red-500 bg-red-500/5";
+  if (type === "EXPIRED" || type === "UNFIT") return "border-l-red-500 bg-red-500/5";
   if (type === "EXPIRING_SOON") return "border-l-amber-500 bg-amber-500/5";
   return "border-l-orange-500 bg-orange-500/5";
 }
