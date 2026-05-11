@@ -16,14 +16,16 @@ export function useAuthGuard() {
   useEffect(() => {
     if (isLoading) return;
 
+    const isLoginPage = pathname === "/login" || pathname.startsWith("/login/");
+
     if (!user) {
-      if (pathname !== "/login") {
+      if (!isLoginPage) {
         router.replace("/login");
       }
       return;
     }
 
-    if (pathname === "/login") {
+    if (isLoginPage) {
       return;
     }
 

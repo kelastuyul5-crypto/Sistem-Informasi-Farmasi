@@ -63,16 +63,8 @@ export default function LoginPage() {
     setError("");
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
-          <p className="text-slate-400 text-sm">Memuat sesi...</p>
-        </div>
-      </div>
-    );
-  }
+  // No loading spinner needed — form is always safe to show immediately.
+  // If user is already logged in, the useEffect above will redirect them.
 
   return (
     <div className="min-h-screen bg-slate-950 flex overflow-hidden">
