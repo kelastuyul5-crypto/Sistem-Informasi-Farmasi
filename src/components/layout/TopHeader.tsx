@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Bell, ChevronRight, User, Home, LogOut } from "lucide-react";
-import { mockAlertSummary } from "@/lib/mock-data";
+import { ChevronRight, User, Home, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { NotificationPanel } from "@/components/layout/NotificationPanel";
 
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
@@ -24,12 +24,9 @@ export function TopHeader() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const segments = pathname.split("/").filter(Boolean);
-  const totalAlerts =
-    mockAlertSummary.expiredCount +
-    mockAlertSummary.expiringSoonCount +
-    mockAlertSummary.lowStockCount;
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -71,21 +68,16 @@ export function TopHeader() {
 
       {/* Right Actions */}
       <div className="flex items-center gap-3">
-        {/* Alert Bell */}
+        {/* Notification Bell — admin only */}
         {user?.role !== "dokter" && (
           <>
-            <Link
-              href="/dashboard"
-              className="relative w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-teal-400 hover:border-teal-500/50 transition-all group"
-            >
-              <Bell className="w-4 h-4 group-hover:animate-bounce" />
-              {totalAlerts > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-900/50 animate-pulse">
-                  {totalAlerts}
-                </span>
-              )}
-            </Link>
-
+            <NotificationPanel
+              isOpen={notifOpen}
+              onClose={() => setNotifOpen(false)}
+              onToggle={() => setNotifOpen(!notifOpen)}
+            />
+            {/* The bell button itself is rendered inside NotificationPanel,
+                so we wire the open toggle via a wrapper click */}
             {/* Divider */}
             <div className="w-px h-6 bg-slate-700" />
           </>
@@ -144,4 +136,3 @@ export function TopHeader() {
     </header>
   );
 }
-
