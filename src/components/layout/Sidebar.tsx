@@ -36,6 +36,7 @@ const adminNav = [
   { label: "Master Obat", href: "/master-obat", icon: Pill },
   { label: "Kasir Pembayaran", href: "/kasir", icon: CreditCard },
   { label: "Laporan", href: "/laporan", icon: BarChart3 },
+  { label: "Kartu Stok", href: "/laporan/kartu-stok", icon: FileText },
 ];
 
 export function Sidebar() {
@@ -55,8 +56,8 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700/50">
-        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-900/40">
-          <Stethoscope className="w-5 h-5 text-white" />
+        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-teal-900/40 overflow-hidden">
+          <img src="/icon.png" alt="PharmaCare" className="w-full h-full object-contain p-0.5" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">

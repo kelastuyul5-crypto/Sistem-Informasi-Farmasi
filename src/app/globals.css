@@ -80,11 +80,13 @@
   }
 }
 
-/* ---- PRINT STYLES (80mm thermal) ---- */
+/* ---- PRINT STYLES ---- */
 @media print {
   body * {
     visibility: hidden !important;
   }
+  
+  /* 80mm Thermal Receipt */
   #receipt-print,
   #receipt-print * {
     visibility: visible !important;
@@ -98,6 +100,21 @@
     color: #000 !important;
     background: #fff !important;
   }
+  
+  /* A4 Report (Kartu Stok) */
+  #print-area,
+  #print-area * {
+    visibility: visible !important;
+  }
+  #print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
   .no-print {
     display: none !important;
   }

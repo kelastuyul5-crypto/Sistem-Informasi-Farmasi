@@ -62,6 +62,18 @@ export type DetailResep = {
   ditanggung_bpjs: boolean;
 };
 
+export type MutasiStok = {
+  id_mutasi: string;
+  jenis_mutasi: "Masuk" | "Keluar_Resep" | "Opname" | "Expired";
+  jumlah: number;
+  created_at: string;
+  id_referensi_transaksi: string | null;
+  batch: {
+    nomor_batch: string;
+    tgl_kadaluarsa: string;
+  };
+};
+
 export type Resep = {
   id_resep: string;
   id_dokter: string;
@@ -221,6 +233,56 @@ export async function getResepWithDetail(): Promise<Resep[]> {
       satuan: d.obat?.satuan ?? "—",
       ditanggung_bpjs: d.obat?.ditanggung_bpjs ?? false,
     })),
+  }));
+}
+
+export async function getKartuStok(id_obat: string, month: string, year: string): Promise<MutasiStok[]> {
+  // Hitung rentang tanggal
+  let startDate: string;
+  let endDate: string;
+
+  if (month === "ALL") {
+    // 1 Tahun Penuh
+    startDate = `${year}-01-01T00:00:00.000Z`;
+    endDate = `${year}-12-31T23:59:59.999Z`;
+  } else {
+    // Spesifik 1 Bulan
+    startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
+    const endDay = new Date(Number(year), Number(month), 0).getDate();
+    endDate = `${year}-${month.padStart(2, '0')}-${endDay}T23:59:59.999Z`;
+  }
+
+  const { data, error } = await supabase
+    .from("mutasi_stok_batch")
+    .select(`
+      id_mutasi,
+      jenis_mutasi,
+      jumlah,
+      created_at,
+      id_referensi_transaksi,
+      obat_batch!inner (
+        nomor_batch,
+        tgl_kadaluarsa,
+        id_obat
+      )
+    `)
+    .eq("obat_batch.id_obat", id_obat)
+    .gte("created_at", startDate)
+    .lte("created_at", endDate)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((d: any) => ({
+    id_mutasi: d.id_mutasi,
+    jenis_mutasi: d.jenis_mutasi,
+    jumlah: d.jumlah,
+    created_at: d.created_at,
+    id_referensi_transaksi: d.id_referensi_transaksi,
+    batch: {
+      nomor_batch: d.obat_batch?.nomor_batch ?? "—",
+      tgl_kadaluarsa: d.obat_batch?.tgl_kadaluarsa ?? "—",
+    },
   }));
 }
 
