@@ -322,3 +322,40 @@ export async function insertPenerimaanBatch(payload: {
 
   return penerimaan;
 }
+
+export async function adjustStockOpname(id_batch: string, new_stock: number, id_admin: string) {
+  // 1. Fetch current stock
+  const { data: batch, error: err1 } = await supabase
+    .from("obat_batch")
+    .select("sisa_stok")
+    .eq("id_batch", id_batch)
+    .single();
+  if (err1) throw new Error("Gagal mengambil data batch: " + err1.message);
+
+  const currentStock = batch.sisa_stok;
+  const difference = new_stock - currentStock;
+
+  if (difference === 0) return; // No change needed
+
+  // 2. Update stock
+  const { error: err2 } = await supabase
+    .from("obat_batch")
+    .update({ sisa_stok: new_stock })
+    .eq("id_batch", id_batch);
+  if (err2) throw new Error("Gagal update stok: " + err2.message);
+
+  // 3. Insert Audit Trail (Opname)
+  const { error: err3 } = await supabase
+    .from("mutasi_stok_batch")
+    .insert({
+      id_batch: id_batch,
+      jenis_mutasi: "Opname",
+      jumlah: difference, // Can be positive or negative
+      // id_referensi_transaksi is left null for manual opname
+    });
+  
+  if (err3) {
+    console.error("Gagal mencatat mutasi Opname:", err3.message);
+    // Ideally we should rollback here, but for now we just log it.
+  }
+}

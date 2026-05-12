@@ -5,11 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Package, Plus, Search, CalendarDays, ChevronDown,
   Boxes, FileSpreadsheet, X, Loader2, Archive, AlertTriangle,
-  CheckCircle2, Clock, Layers, Trash2,
+  CheckCircle2, Clock, Layers, Trash2, Scale
 } from "lucide-react";
 import {
   getBatchWithJoins, getSupplier, getObatList,
-  insertPenerimaanBatch, archiveBatch, disposeBatch,
+  insertPenerimaanBatch, archiveBatch, disposeBatch, adjustStockOpname,
   type ObatBatch,
 } from "@/lib/supabase-queries";
 import { useAuth } from "@/lib/auth-context";
@@ -101,6 +101,8 @@ export default function InventoriPage() {
   const [form, setForm]             = useState(emptyForm);
   const [formError, setFormError]   = useState("");
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [opnameBatch, setOpnameBatch] = useState<ObatBatch | null>(null);
+  const [actualStock, setActualStock] = useState<number | "">("");
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -110,20 +112,48 @@ export default function InventoriPage() {
 
   const insertMutation = useMutation({
     mutationFn: insertPenerimaanBatch,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["batch"] }); setShowForm(false); setForm(emptyForm); },
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ["batch"] }); 
+      qc.invalidateQueries({ queryKey: ["obat"] }); 
+      qc.invalidateQueries({ queryKey: ["notifications", "alerts"] });
+      setShowForm(false); 
+      setForm(emptyForm); 
+    },
     onError: (e: Error) => setFormError(e.message),
   });
 
   const archiveMutation = useMutation({
     mutationFn: (id_batch: string) => archiveBatch(id_batch),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["batch"] }); setArchivingId(null); },
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ["batch"] }); 
+      qc.invalidateQueries({ queryKey: ["obat"] }); 
+      qc.invalidateQueries({ queryKey: ["notifications", "alerts"] });
+      setArchivingId(null); 
+    },
     onError: (e: Error) => { alert(`Gagal mengarsipkan batch: ${e.message}`); setArchivingId(null); },
   });
 
   const disposeMutation = useMutation({
     mutationFn: (id_batch: string) => disposeBatch(id_batch),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["batch"] }); setArchivingId(null); },
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ["batch"] }); 
+      qc.invalidateQueries({ queryKey: ["obat"] }); 
+      qc.invalidateQueries({ queryKey: ["notifications", "alerts"] });
+      setArchivingId(null); 
+    },
     onError: (e: Error) => { alert(`Gagal membuang batch: ${e.message}`); setArchivingId(null); },
+  });
+
+  const opnameMutation = useMutation({
+    mutationFn: ({ id_batch, new_stock }: { id_batch: string; new_stock: number }) => 
+      adjustStockOpname(id_batch, new_stock, user?.id || ""),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["batch"] }); 
+      qc.invalidateQueries({ queryKey: ["obat"] }); 
+      qc.invalidateQueries({ queryKey: ["notifications", "alerts"] });
+      setOpnameBatch(null);
+    },
+    onError: (e: Error) => alert(`Gagal melakukan opname: ${e.message}`),
   });
 
   function handleOpenForm() {
@@ -365,6 +395,16 @@ export default function InventoriPage() {
                                   <Archive className="w-3.5 h-3.5" />
                                 )}
                               </button>
+
+                              {/* Action: OPNAME (Stock Correction) */}
+                              <button
+                                onClick={() => { setOpnameBatch(b); setActualStock(b.sisa_stok); }}
+                                disabled={archivingId === b.id_batch}
+                                title="OPNAME: Sesuaikan jumlah fisik stok jika terjadi selisih."
+                                className="flex items-center justify-center w-8 h-8 rounded-lg transition-all border bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500 hover:text-white"
+                              >
+                                <Scale className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           ) : (
                             <span className="text-xs text-slate-600 italic px-2">— Non Aktif —</span>
@@ -482,6 +522,62 @@ export default function InventoriPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Form Opname ── */}
+      {opnameBatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/60 bg-slate-800/40">
+              <h2 className="font-bold text-white flex items-center gap-2">
+                <Scale className="w-4 h-4 text-blue-400" /> Penyesuaian Stok (Opname)
+              </h2>
+              <button onClick={() => setOpnameBatch(null)} className="text-slate-500 hover:text-slate-200">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-200">{opnameBatch.nama_obat}</p>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">{opnameBatch.nomor_batch}</p>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700">
+                <span className="text-xs text-slate-400 uppercase font-semibold">Stok Sistem Saat Ini</span>
+                <span className="text-lg font-bold text-slate-200">{opnameBatch.sisa_stok}</span>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Jumlah Fisik Sebenarnya</label>
+                <input
+                  type="number" min={0} value={actualStock}
+                  onChange={e => setActualStock(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-base text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+              
+              {actualStock !== "" && Number(actualStock) !== opnameBatch.sisa_stok && (
+                <div className={cn("p-3 rounded-lg border text-sm font-medium", Number(actualStock) > opnameBatch.sisa_stok ? "bg-green-500/10 border-green-500/30 text-green-400" : "bg-orange-500/10 border-orange-500/30 text-orange-400")}>
+                  Selisih Penyesuaian: {Number(actualStock) - opnameBatch.sisa_stok > 0 ? "+" : ""}{Number(actualStock) - opnameBatch.sisa_stok} unit
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button" onClick={() => setOpnameBatch(null)}
+                  className="flex-1 py-2.5 rounded-lg border border-slate-700 text-slate-400 hover:bg-slate-800 font-semibold text-sm"
+                >Batal</button>
+                <button
+                  onClick={() => opnameMutation.mutate({ id_batch: opnameBatch.id_batch, new_stock: Number(actualStock) })}
+                  disabled={actualStock === "" || Number(actualStock) === opnameBatch.sisa_stok || opnameMutation.isPending}
+                  className="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/40"
+                >
+                  {opnameMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Simpan Opname
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

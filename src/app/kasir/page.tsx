@@ -21,6 +21,9 @@ export default function KasirPage() {
     mutationFn: (id_resep: string) => processPayment(id_resep),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["resep"] });
+      qc.invalidateQueries({ queryKey: ["batch"] });
+      qc.invalidateQueries({ queryKey: ["obat"] });
+      qc.invalidateQueries({ queryKey: ["notifications", "alerts"] });
       setPaySuccess(true);
       setSelected(null);
       setTimeout(() => setPaySuccess(false), 3000);
